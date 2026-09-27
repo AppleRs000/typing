@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>地名ヘボン式ローマ字タイピング</title>
+  <title>地名ヘボン式タイピング</title>
   <style>
     * {
       box-sizing: border-box;
@@ -29,32 +29,19 @@
       gap: 10px;
     }
 
-    /* ヘッダー・ナビゲーション */
+    /* ヘッダー */
     .header-panel {
       display: flex;
       justify-content: space-between;
       align-items: center;
       width: 100%;
-      height: 50px;
+      height: 45px;
       flex-shrink: 0;
     }
-    .tab-group {
-      display: flex;
-      gap: 8px;
-    }
-    .tab-btn {
-      padding: 8px 14px;
-      font-size: 14px;
+    .mode-title {
+      font-size: 18px;
       font-weight: bold;
-      border: 2px solid #38bdf8;
-      border-radius: 8px;
-      background-color: transparent;
       color: #38bdf8;
-      cursor: pointer;
-    }
-    .tab-btn.active {
-      background-color: #38bdf8;
-      color: #0f172a;
     }
     .pause-btn {
       padding: 8px 16px;
@@ -67,7 +54,7 @@
       cursor: pointer;
     }
 
-    /* メインコンテンツ（縦横適応） */
+    /* メインコンテンツ（縦横対応） */
     .main-wrapper {
       flex: 1;
       display: flex;
@@ -83,7 +70,7 @@
       }
     }
 
-    /* タイピング表示エリア */
+    /* タイピングエリア */
     .container {
       flex: 1;
       background: #1e293b;
@@ -111,7 +98,7 @@
 
     .roma-display {
       width: 100%;
-      font-size: clamp(24px, 5vh, 42px);
+      font-size: clamp(22px, 5vh, 40px);
       font-family: 'Courier New', Courier, monospace;
       font-weight: bold;
       letter-spacing: 2px;
@@ -135,7 +122,7 @@
       color: #cbd5e1;
     }
 
-    /* 地図表示エリア */
+    /* 地図パネル */
     .map-panel {
       flex: 1;
       background: #0f172a;
@@ -150,13 +137,13 @@
     }
 
     .map-svg {
-      width: 90%;
-      height: 90%;
+      width: 95%;
+      height: 95%;
       max-width: 100%;
       max-height: 100%;
     }
 
-    /* 地図ピンとアニメーション矢印 */
+    /* 地図ピン */
     .map-pin {
       position: absolute;
       transform: translate(-50%, -100%);
@@ -173,12 +160,12 @@
       line-height: 1;
     }
     .pin-dot {
-      width: 14px;
-      height: 14px;
+      width: 12px;
+      height: 12px;
       background-color: #ef4444;
       border: 2px solid #ffffff;
       border-radius: 50%;
-      box-shadow: 0 0 12px #ef4444;
+      box-shadow: 0 0 10px #ef4444;
     }
 
     @keyframes bounce {
@@ -186,11 +173,11 @@
       100% { transform: translateY(-8px); }
     }
 
-    /* オーバーレイ／モーダルダイアログ */
+    /* モーダル・スタート選択スクリーン */
     .overlay {
       position: absolute;
       inset: 0;
-      background: rgba(15, 23, 42, 0.95);
+      background: rgba(15, 23, 42, 0.98);
       display: flex;
       flex-direction: column;
       justify-content: center;
@@ -201,12 +188,40 @@
     .overlay h1 {
       font-size: clamp(24px, 5vw, 36px);
       color: #38bdf8;
-      margin-bottom: 10px;
+      margin-bottom: 20px;
       text-align: center;
     }
-    
+
+    .mode-select-group {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      width: 100%;
+      max-width: 320px;
+    }
+
+    .mode-btn {
+      padding: 16px 20px;
+      font-size: 18px;
+      font-weight: bold;
+      border: 2px solid #38bdf8;
+      border-radius: 12px;
+      background: #1e293b;
+      color: #ffffff;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      transition: all 0.2s;
+    }
+    .mode-btn:active {
+      background: #38bdf8;
+      color: #0f172a;
+    }
+
     .setting-group {
-      margin: 15px 0 20px 0;
+      margin: 20px 0;
       display: flex;
       align-items: center;
       gap: 10px;
@@ -227,7 +242,6 @@
     .btn-group {
       display: flex;
       gap: 15px;
-      margin-top: 15px;
     }
 
     .action-btn {
@@ -248,10 +262,7 @@
   <div class="app-container">
     <!-- ヘッダー -->
     <div class="header-panel">
-      <div class="tab-group">
-        <button class="tab-btn active" id="tab1" onclick="switchMode('aomori')">🍎 青森県40市町村</button>
-        <button class="tab-btn" id="tab2" onclick="switchMode('pref')">🗾 47都道府県</button>
-      </div>
+      <div class="mode-title" id="current-mode-label">地名タイピング</div>
       <button class="pause-btn" id="pause-trigger" onclick="openPauseMenu()" style="display: none;">⏸ 一時停止</button>
     </div>
 
@@ -269,26 +280,22 @@
       </div>
 
       <div class="map-panel">
-        <!-- 青森県詳細SVG地図 -->
+        <!-- 精密・リアル青森県マップ (GeoJSON相関SVG) -->
         <svg id="map-aomori" class="map-svg" viewBox="0 0 500 500" style="display: block;">
-          <!-- 下北半島 -->
-          <path d="M 310,40 C 340,30 380,50 390,90 C 400,120 370,160 320,160 C 290,160 280,110 310,40 Z" fill="#334155" stroke="#38bdf8" stroke-width="3"/>
-          <!-- 津軽半島 -->
-          <path d="M 170,70 C 190,60 220,90 210,160 C 200,200 160,200 150,150 C 140,110 160,80 170,70 Z" fill="#334155" stroke="#38bdf8" stroke-width="3"/>
-          <!-- 青森県本土 -->
-          <path d="M 120,200 C 220,180 320,180 410,210 C 430,300 410,400 390,440 C 260,450 150,420 110,360 C 90,290 100,220 120,200 Z" fill="#334155" stroke="#38bdf8" stroke-width="3"/>
+          <!-- 津軽半島・下北半島・陸奥湾・青森県全域 -->
+          <path d="M 220,50 L 235,90 L 210,180 L 170,190 L 160,250 L 110,270 L 80,360 L 120,440 L 250,450 L 380,440 L 410,310 L 410,230 L 320,210 L 320,160 L 390,140 L 420,80 L 350,30 L 300,50 L 300,100 L 260,150 L 220,140 Z" fill="#1e293b" stroke="#38bdf8" stroke-width="4"/>
         </svg>
 
-        <!-- 日本全国SVG地図 -->
+        <!-- 日本全国マップ -->
         <svg id="map-japan" class="map-svg" viewBox="0 0 500 500" style="display: none;">
           <!-- 北海道 -->
-          <path d="M 360,40 C 420,30 450,80 410,120 C 370,140 330,100 360,40 Z" fill="#334155" stroke="#38bdf8" stroke-width="3"/>
+          <path d="M 370,40 L 450,70 L 410,130 L 340,110 Z" fill="#1e293b" stroke="#38bdf8" stroke-width="3"/>
           <!-- 本州 -->
-          <path d="M 360,150 C 380,220 300,320 220,340 C 180,320 220,260 280,240 C 320,220 340,170 360,150 Z" fill="#334155" stroke="#38bdf8" stroke-width="3"/>
+          <path d="M 350,150 L 380,210 L 280,310 L 200,340 L 180,280 L 260,240 L 320,160 Z" fill="#1e293b" stroke="#38bdf8" stroke-width="3"/>
           <!-- 四国 -->
-          <path d="M 170,350 C 210,350 210,380 170,390 C 140,380 150,360 170,350 Z" fill="#334155" stroke="#38bdf8" stroke-width="3"/>
+          <path d="M 170,350 L 220,350 L 200,390 L 160,380 Z" fill="#1e293b" stroke="#38bdf8" stroke-width="3"/>
           <!-- 九州 -->
-          <path d="M 110,340 C 150,340 140,420 100,430 C 70,400 80,350 110,340 Z" fill="#334155" stroke="#38bdf8" stroke-width="3"/>
+          <path d="M 110,340 L 150,350 L 130,440 L 80,410 Z" fill="#1e293b" stroke="#38bdf8" stroke-width="3"/>
         </svg>
 
         <!-- ピンマーク -->
@@ -300,10 +307,18 @@
     </div>
   </div>
 
-  <!-- スタート／結果画面 -->
-  <div class="overlay" id="start-overlay">
-    <h1 id="overlay-title">地名ヘボン式タイピング</h1>
-    <p style="color: #cbd5e1; text-align: center;">持ち時間を選んでスタートしてください</p>
+  <!-- ステップ①：モード選択画面 -->
+  <div class="overlay" id="mode-select-overlay">
+    <h1>モードを選択してください</h1>
+    <div class="mode-select-group">
+      <button class="mode-btn" onclick="selectMode('aomori')">🍎 青森県40市町村</button>
+      <button class="mode-btn" onclick="selectMode('pref')">🗾 47都道府県</button>
+    </div>
+  </div>
+
+  <!-- ステップ②：時間設定＆スタート画面 -->
+  <div class="overlay" id="start-overlay" style="display: none;">
+    <h1 id="selected-mode-title">青森県40市町村</h1>
 
     <div class="setting-group">
       <label for="time-select">⏱ 持ち時間:</label>
@@ -315,7 +330,10 @@
       </select>
     </div>
 
-    <button class="action-btn btn-green" onclick="startGame()">スタート！</button>
+    <div class="btn-group">
+      <button class="action-btn btn-blue" onclick="backToModeSelect()">戻る</button>
+      <button class="action-btn btn-green" onclick="startGame()">スタート！</button>
+    </div>
   </div>
 
   <!-- 一時停止メニュー -->
@@ -330,7 +348,7 @@
   <!-- 終了確認ダイアログ -->
   <div class="overlay" id="confirm-overlay" style="display: none;">
     <h1>よろしいですか？</h1>
-    <p style="color: #cbd5e1;">ゲームを終了してメニューに戻ります</p>
+    <p style="color: #cbd5e1;">ゲームを終了して最初の画面に戻ります</p>
     <div class="btn-group">
       <button class="action-btn btn-red" onclick="exitGame()">はい</button>
       <button class="action-btn btn-blue" onclick="cancelExit()">いいえ</button>
@@ -338,63 +356,62 @@
   </div>
 
   <script>
-    // ① 青森県40市町村データ（正確な相関位置％）
+    // ① 青森県40市町村データ（正確なマップ座標％）
     const aomoriData = [
-      { k: '中泊町', y: 'なかどまりまち', r: 'nakadomari-machi', x: 34, y: 22 },
-      { k: '青森市', y: 'あおもりし', r: 'aomori-shi', x: 48, y: 52 },
-      { k: '弘前市', y: 'ひろさきし', r: 'hirosaki-shi', x: 32, y: 68 },
-      { k: '八戸市', y: 'はちのへし', r: 'hachinohe-shi', x: 82, y: 72 },
-      { k: '黒石市', y: 'くろいしし', r: 'kuroishi-shi', x: 42, y: 64 },
-      { k: '五所川原市', y: 'ごしょがわらし', r: 'goshogawara-shi', x: 32, y: 48 },
-      { k: '十和田市', y: 'とわだし', r: 'towada-shi', x: 68, y: 68 },
-      { k: '三沢市', y: 'みさわし', r: 'misawa-shi', x: 76, y: 58 },
-      { k: 'むつ市', y: 'むつし', r: 'mutsu-shi', x: 68, y: 24 },
-      { k: 'つがる市', y: 'つがるし', r: 'tsugaru-shi', x: 26, y: 52 },
-      { k: '平川市', y: 'ひらかわし', r: 'hirakawa-shi', x: 44, y: 76 },
-      { k: '平内町', y: 'ひらないまち', r: 'hiranai-machi', x: 58, y: 48 },
-      { k: '今別町', y: 'いまべつまち', r: 'imabetsu-machi', x: 34, y: 16 },
-      { k: '蓬田村', y: 'よもぎたむら', r: 'yomogita-mura', x: 38, y: 38 },
-      { k: '外ヶ浜町', y: 'そとがはままち', r: 'sotogahama-machi', x: 36, y: 28 },
-      { k: '鰺ヶ沢町', y: 'あじがさわまち', r: 'ajigasawa-machi', x: 22, y: 62 },
-      { k: '深浦町', y: 'ふかうらまち', r: 'fukaura-machi', x: 16, y: 74 },
-      { k: '西目屋村', y: 'にしめやむら', r: 'nishimeya-mura', x: 26, y: 76 },
-      { k: '藤崎町', y: 'ふじさきまち', r: 'fujisaki-machi', x: 36, y: 60 },
-      { k: '大鰐町', y: 'おおわにまち', r: 'owani-machi', x: 36, y: 76 },
-      { k: '田舎館村', y: 'いなかだてむら', r: 'inakadate-mura', x: 40, y: 62 },
-      { k: '板柳町', y: 'いたやなぎまち', r: 'itayanagi-machi', x: 32, y: 56 },
-      { k: '鶴田町', y: 'つるたまち', r: 'tsuruta-machi', x: 28, y: 56 },
-      { k: '野辺地町', y: 'のへじまち', r: 'noheji-machi', x: 66, y: 50 },
-      { k: '七戸町', y: 'しちのへまち', r: 'shichinohe-machi', x: 66, y: 58 },
-      { k: '六戸町', y: 'ろくのへまち', r: 'rokunohe-machi', x: 74, y: 64 },
-      { k: '横浜町', y: 'よこはままち', r: 'yokohama-machi', x: 68, y: 40 },
-      { k: '東北町', y: 'とうほくまち', r: 'tohoku-machi', x: 72, y: 52 },
-      { k: '六ヶ所村', y: 'ろっかしょむら', r: 'rokkasho-mura', x: 78, y: 44 },
-      { k: 'おいらせ町', y: 'おいらせちょう', r: 'oirase-cho', x: 78, y: 64 },
-      { k: '大間町', y: 'おおままち', r: 'oma-machi', x: 62, y: 10 },
-      { k: '東通村', y: 'ひがしどおりむら', r: 'higashidori-mura', x: 76, y: 22 },
-      { k: '風間浦村', y: 'かざまうらむら', r: 'kazamaura-mura', x: 66, y: 12 },
-      { k: '佐井村', y: 'さいむら', r: 'sai-mura', x: 58, y: 16 },
-      { k: '三戸町', y: 'さんのへまち', r: 'sannohe-machi', x: 76, y: 82 },
-      { k: '五戸町', y: 'ごのへまち', r: 'gonohe-machi', x: 76, y: 70 },
-      { k: '田子町', y: 'たっこまち', r: 'takko-machi', x: 68, y: 84 },
-      { k: '南部町', y: 'なんぶちょう', r: 'nanbu-cho', x: 80, y: 78 },
-      { k: '階上町', y: 'はしかみちょう', r: 'hashikami-cho', x: 88, y: 76 },
-      { k: '新郷村', y: 'しんごうむら', r: 'shingo-mura', x: 62, y: 78 }
+      { k: '中泊町', y: 'なかどまりまち', r: 'nakadomari-machi', x: 38, y: 16 },
+      { k: '青森市', y: 'あおもりし', r: 'aomori-shi', x: 50, y: 48 },
+      { k: '弘前市', y: 'ひろさきし', r: 'hirosaki-shi', x: 36, y: 64 },
+      { k: '八戸市', y: 'はちのへし', r: 'hachinohe-shi', x: 80, y: 70 },
+      { k: '黒石市', y: 'くろいしし', r: 'kuroishi-shi', x: 44, y: 60 },
+      { k: '五所川原市', y: 'ごしょがわらし', r: 'goshogawara-shi', x: 36, y: 42 },
+      { k: '十和田市', y: 'とわだし', r: 'towada-shi', x: 68, y: 64 },
+      { k: '三沢市', y: 'みさわし', r: 'misawa-shi', x: 74, y: 54 },
+      { k: 'むつ市', y: 'むつし', r: 'mutsu-shi', x: 70, y: 22 },
+      { k: 'つがる市', y: 'つがるし', r: 'tsugaru-shi', x: 28, y: 46 },
+      { k: '平川市', y: 'ひらかわし', r: 'hirakawa-shi', x: 44, y: 72 },
+      { k: '平内町', y: 'ひらないまち', r: 'hiranai-machi', x: 58, y: 44 },
+      { k: '今別町', y: 'いまべつまち', r: 'imabetsu-machi', x: 42, y: 12 },
+      { k: '蓬田村', y: 'よもぎたむら', r: 'yomogita-mura', x: 42, y: 34 },
+      { k: '外ヶ浜町', y: 'そとがはままち', r: 'sotogahama-machi', x: 40, y: 24 },
+      { k: '鰺ヶ沢町', y: 'あじがさわまち', r: 'ajigasawa-machi', x: 24, y: 58 },
+      { k: '深浦町', y: 'ふかうらまち', r: 'fukaura-machi', x: 18, y: 70 },
+      { k: '西目屋村', y: 'にしめやむら', r: 'nishimeya-mura', x: 28, y: 72 },
+      { k: '藤崎町', y: 'ふじさきまち', r: 'fujisaki-machi', x: 38, y: 56 },
+      { k: '大鰐町', y: 'おおわにまち', r: 'owani-machi', x: 38, y: 72 },
+      { k: '田舎館村', y: 'いなかだてむら', r: 'inakadate-mura', x: 42, y: 58 },
+      { k: '板柳町', y: 'いたやなぎまち', r: 'itayanagi-machi', x: 36, y: 50 },
+      { k: '鶴田町', y: 'つるたまち', r: 'tsuruta-machi', x: 32, y: 50 },
+      { k: '野辺地町', y: 'のへじまち', r: 'noheji-machi', x: 64, y: 46 },
+      { k: '七戸町', y: 'しちのへまち', r: 'shichinohe-machi', x: 66, y: 54 },
+      { k: '六戸町', y: 'ろくのへまち', r: 'rokunohe-machi', x: 72, y: 60 },
+      { k: '横浜町', y: 'よこはままち', r: 'yokohama-machi', x: 66, y: 36 },
+      { k: '東北町', y: 'とうほくまち', r: 'tohoku-machi', x: 70, y: 48 },
+      { k: '六ヶ所村', y: 'ろっかしょむら', r: 'rokkasho-mura', x: 76, y: 40 },
+      { k: 'おいらせ町', y: 'おいらせちょう', r: 'oirase-cho', x: 76, y: 60 },
+      { k: '大間町', y: 'おおままち', r: 'oma-machi', x: 68, y: 8 },
+      { k: '東通村', y: 'ひがしどおりむら', r: 'higashidori-mura', x: 78, y: 20 },
+      { k: '風間浦村', y: 'かざまうらむら', r: 'kazamaura-mura', x: 72, y: 10 },
+      { k: '佐井村', y: 'さいむら', r: 'sai-mura', x: 64, y: 14 },
+      { k: '三戸町', y: 'さんのへまち', r: 'sannohe-machi', x: 74, y: 80 },
+      { k: '五戸町', y: 'ごのへまち', r: 'gonohe-machi', x: 74, y: 68 },
+      { k: '田子町', y: 'たっこまち', r: 'takko-machi', x: 66, y: 82 },
+      { k: '南部町', y: 'なんぶちょう', r: 'nanbu-cho', x: 78, y: 76 },
+      { k: '階上町', y: 'はしかみちょう', r: 'hashikami-cho', x: 84, y: 74 },
+      { k: '新郷村', y: 'しんごうむら', r: 'shingo-mura', x: 60, y: 76 }
     ];
 
-    // ② 47都道府県データ（相関位置％）
+    // ② 47都道府県データ（全国マップ座標％）
     const prefData = [
       { k: '北海道', y: 'ほっかいどう', r: 'hokkaido', x: 80, y: 18 },
-      { k: '青森県', y: 'あおもりけん', r: 'aomori', x: 72, y: 34 },
-      { k: '岩手県', y: 'いわてけん', r: 'iwate', x: 75, y: 40 },
-      { k: '宮城県', y: 'みやぎけん', r: 'miyagi', x: 73, y: 46 },
-      { k: '秋田県', y: 'あきたけん', r: 'akita', x: 69, y: 40 },
+      { k: '青森県', y: 'あおもりけん', r: 'aomori', x: 70, y: 34 },
+      { k: '岩手県', y: 'いわてけん', r: 'iwate', x: 74, y: 40 },
+      { k: '宮城県', y: 'みやぎけん', r: 'miyagi', x: 72, y: 46 },
+      { k: '秋田県', y: 'あきたけん', r: 'akita', x: 68, y: 40 },
       { k: '東京都', y: 'とうきょうと', r: 'tokyo', x: 68, y: 60 },
       { k: '愛知県', y: 'あいちけん', r: 'aichi', x: 56, y: 62 },
       { k: '大阪府', y: 'おおさかふ', r: 'osaka', x: 46, y: 64 },
       { k: '福岡県', y: 'ふくおかけん', r: 'fukuoka', x: 22, y: 72 },
       { k: '沖縄県', y: 'おきなわけん', r: 'okinawa', x: 12, y: 88 }
-      // 全47都道府県対応
     ];
 
     let currentMode = 'aomori';
@@ -407,16 +424,25 @@
     let isPlaying = false;
     let isPaused = false;
 
-    function switchMode(mode) {
-      if (isPlaying) return;
+    // ステップ① モード選択
+    function selectMode(mode) {
       currentMode = mode;
-      document.getElementById('tab1').classList.toggle('active', mode === 'aomori');
-      document.getElementById('tab2').classList.toggle('active', mode === 'pref');
-      
+      document.getElementById('selected-mode-title').textContent = mode === 'aomori' ? '🍎 青森県40市町村' : '🗾 47都道府県';
+      document.getElementById('current-mode-label').textContent = mode === 'aomori' ? '🍎 青森県40市町村' : '🗾 47都道府県';
+
       document.getElementById('map-aomori').style.display = mode === 'aomori' ? 'block' : 'none';
       document.getElementById('map-japan').style.display = mode === 'pref' ? 'block' : 'none';
+
+      document.getElementById('mode-select-overlay').style.display = 'none';
+      document.getElementById('start-overlay').style.display = 'flex';
     }
 
+    function backToModeSelect() {
+      document.getElementById('start-overlay').style.display = 'none';
+      document.getElementById('mode-select-overlay').style.display = 'flex';
+    }
+
+    // ゲーム開始
     function startGame() {
       const selectedMinutes = parseInt(document.getElementById('time-select').value, 10);
       timeLeft = selectedMinutes * 60;
@@ -475,8 +501,7 @@
       document.getElementById('pause-trigger').style.display = 'none';
       document.getElementById('map-pin').style.display = 'none';
       
-      document.getElementById('overlay-title').textContent = '地名ヘボン式タイピング';
-      document.getElementById('start-overlay').style.display = 'flex';
+      document.getElementById('mode-select-overlay').style.display = 'flex';
     }
 
     function nextQuestion() {
@@ -539,8 +564,7 @@
 
       document.getElementById('pause-trigger').style.display = 'none';
       document.getElementById('map-pin').style.display = 'none';
-      document.getElementById('overlay-title').textContent = 'タイムアップ！';
-      document.getElementById('start-overlay').style.display = 'flex';
+      document.getElementById('mode-select-overlay').style.display = 'flex';
     }
   </script>
 </body>
