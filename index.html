@@ -4,82 +4,85 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>地名ヘボン式タイピング・クイズ</title>
+<title>地名ヘボン式タイピング・地図クイズ</title>
 <script src="https://d3js.org/d3.v7.min.js"></script>
 <script src="https://unpkg.com/topojson-client@3"></script>
 <style>
-*{box-sizing:border-box;user-select:none}
-html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;background:#0f172a;color:#fff}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;background:#0f172a;color:#fff}
+button,input,select{font:inherit}
 button{cursor:pointer}
 .app{width:100%;height:100%;padding:10px;display:flex;flex-direction:column;gap:10px}
 .header{height:45px;flex:none;display:flex;align-items:center;justify-content:space-between;gap:8px}
-.title{font-size:18px;font-weight:800;color:#38bdf8}
-.header-right{display:flex;align-items:center;gap:8px}
-.pause{border:0;border-radius:9px;padding:9px 16px;background:#f59e0b;color:#0f172a;font-weight:800;font-size:14px}
+.title{font-size:clamp(14px,2.5vw,19px);font-weight:900;color:#38bdf8}
+.pause{border:0;border-radius:10px;padding:10px 14px;background:#f59e0b;color:#0f172a;font-weight:900;white-space:nowrap}
 .main{min-height:0;flex:1;display:flex;flex-direction:column;gap:10px}
 .game-card,.map-card{background:#1e293b;border:2px solid #334155;border-radius:16px;min-height:0}
-.game-card{flex:1;display:flex;flex-direction:column;justify-content:space-around;align-items:center;text-align:center;padding:15px}
-.kanji{font-size:clamp(30px,6vh,50px);font-weight:900;color:#facc15}
-.kana{font-size:clamp(15px,3vh,22px);color:#94a3b8}
-.roma{width:100%;font:800 clamp(21px,5vh,40px)/1.25 "Courier New",monospace;letter-spacing:2px;background:#0f172a;border:2px solid #38bdf8;border-radius:12px;padding:12px;min-height:72px;word-break:break-all}
+.game-card{flex:0 0 42%;display:flex;flex-direction:column;justify-content:space-evenly;align-items:center;text-align:center;padding:12px;gap:8px}
+.kanji{font-size:clamp(27px,5vh,48px);font-weight:900;color:#facc15}
+.kana{font-size:clamp(15px,2.5vh,22px);color:#cbd5e1}
+.roma{width:100%;font:800 clamp(20px,4vh,36px)/1.25 "Courier New",monospace;letter-spacing:2px;background:#0f172a;border:2px solid #38bdf8;border-radius:12px;padding:10px;min-height:56px;overflow-wrap:anywhere}
 .typed{color:#4ade80}.untyped{color:#fff}.mistyped{color:#f87171;text-decoration:underline}
-.status{width:100%;display:flex;justify-content:space-around;gap:6px;font-size:clamp(14px,2.5vh,22px);font-weight:900;color:#cbd5e1}
+.answer-input{width:100%;max-width:560px;padding:12px;border:2px solid #38bdf8;border-radius:10px;background:#fff;color:#0f172a;font-size:22px;font-weight:800;text-align:center;outline:none}
+.answer-input:focus{border-color:#facc15;box-shadow:0 0 0 3px #facc1540}
+.input-help{font-size:12px;color:#94a3b8}
+.status{width:100%;display:flex;justify-content:space-around;flex-wrap:wrap;gap:8px;font-size:clamp(13px,2.2vh,19px);font-weight:900;color:#cbd5e1}
 .map-card{flex:1;background:#0f172a;border-color:#38bdf8;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center}
 .map-svg{width:100%;height:100%;display:block}
 .map-bg{fill:#1e293b;stroke:#475569;stroke-width:.8px;vector-effect:non-scaling-stroke}
 .pref-border{fill:none;stroke:#38bdf8;stroke-width:1.5px;vector-effect:non-scaling-stroke}
 .muni-border{fill:none;stroke:#64748b;stroke-width:.8px;vector-effect:non-scaling-stroke}
-.overlay{position:fixed;inset:0;background:rgba(15,23,42,.98);z-index:100;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:20px}
-.overlay h1{font-size:clamp(25px,5vw,38px);color:#38bdf8;text-align:center;margin:0 0 22px}
-.mode-group{width:min(90vw,720px);display:flex;gap:18px}
-.mode-btn{flex:1;padding:18px 14px;border:2px solid #38bdf8;border-radius:14px;background:#1e293b;color:#fff;font-size:clamp(16px,3vw,21px);font-weight:900}
-.mode-btn.selected{background:#38bdf8;color:#0f172a}
-.setting{margin:10px 0 24px;font-size:19px;font-weight:900;color:#cbd5e1}
-.setting select{font-size:19px;font-weight:900;padding:9px 15px;border:2px solid #38bdf8;border-radius:9px;background:#0f172a;color:#fff}
-.btns{display:flex;gap:14px;flex-wrap:wrap;justify-content:center}
-.action{border:0;border-radius:12px;padding:13px 28px;font-size:18px;font-weight:900}
-.blue{background:#38bdf8;color:#0f172a}.green{background:#4ade80;color:#0f172a}.red{background:#ef4444;color:#fff}
-.result-box{text-align:center;color:#cbd5e1;font-size:20px;line-height:1.9;margin-bottom:20px}
-.result-box strong{color:#facc15;font-size:32px}
 .loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-weight:700;z-index:2}
-.quiz-controls{display:none;position:absolute;z-index:5;top:10px;left:10px;right:10px;align-items:flex-start;justify-content:space-between;gap:8px;pointer-events:none}
-.quiz-controls>*{pointer-events:auto}
-.hint-btn{border:2px solid #facc15;border-radius:10px;padding:10px 15px;background:#facc15;color:#0f172a;font-size:16px;font-weight:900;box-shadow:0 3px 10px #0005}
-.quiz-status{background:#0f172aeF;border:1px solid #475569;border-radius:10px;padding:9px 12px;font-size:14px;font-weight:900;line-height:1.7;color:#cbd5e1}
-.quiz-status span{color:#facc15}
-.quiz-bottom{display:none;position:absolute;z-index:5;bottom:10px;left:10px;right:10px;text-align:center;pointer-events:none}
-.quiz-message{display:inline-block;background:#0f172aE8;border-radius:9px;padding:7px 12px;margin-bottom:8px;font-size:15px;font-weight:800;color:#fff}
-.choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;width:min(100%,650px);margin:auto;pointer-events:auto}
-.choice-btn{min-height:48px;border:2px solid #38bdf8;border-radius:12px;background:#1e293bf2;color:#fff;font-size:clamp(15px,2.5vh,21px);font-weight:900;padding:9px 6px;box-shadow:0 3px 10px #0005}
-.choice-btn:disabled{opacity:1}
-.choice-btn.correct-answer{background:#166534;border-color:#4ade80;color:#fff}
-.choice-btn.wrong-answer{background:#991b1b;border-color:#f87171;color:#fff}
+.quiz-tools{position:absolute;top:12px;left:12px;z-index:5;display:flex;flex-direction:column;gap:8px;max-width:calc(100% - 24px)}
+.hint-btn{border:0;border-radius:12px;padding:12px 18px;background:#facc15;color:#0f172a;font-weight:900;font-size:clamp(14px,2.3vw,19px);box-shadow:0 3px 10px #0005}
+.hint-btn.on{background:#4ade80}
+.quiz-hint{display:none;max-width:min(380px,80vw);padding:10px 13px;border:1px solid #64748b;border-radius:10px;background:#1e293bf2;color:#fff;font-weight:800;line-height:1.6}
+.quiz-hint.visible{display:block}
+.quiz-hint .hint-kana{color:#facc15;font-size:18px}
+.quiz-hint .hint-roma{color:#4ade80;font-family:"Courier New",monospace;font-size:18px;overflow-wrap:anywhere}
+.map-status{position:absolute;right:12px;top:12px;z-index:4;background:#0f172aeF;border:1px solid #475569;border-radius:12px;padding:10px 13px;display:flex;gap:10px;flex-wrap:wrap;font-size:clamp(12px,2vw,16px);font-weight:900;color:#cbd5e1}
+.quiz-message{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);z-index:4;background:#0f172ae8;border-radius:10px;padding:8px 12px;font-weight:800;font-size:clamp(12px,2vw,16px);text-align:center;white-space:normal;width:max-content;max-width:90%}
+.quiz-input-wrap{display:none;position:absolute;left:12px;right:12px;bottom:52px;z-index:5;justify-content:center}
+.quiz-input-wrap .answer-input{max-width:500px}
 .app.quiz-mode .main{flex-direction:column}
 .app.quiz-mode .game-card{display:none}
 .app.quiz-mode .map-card{flex:1;min-height:0}
-.app.quiz-mode .quiz-controls{display:flex}
-.app.quiz-mode .quiz-bottom{display:block}
-.app.quiz-mode .title{font-size:16px}
+.app.quiz-mode .quiz-input-wrap{display:flex}
+.overlay{position:fixed;inset:0;background:#0f172af7;z-index:100;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:20px;overflow:auto}
+.overlay h1{font-size:clamp(24px,5vw,38px);color:#38bdf8;text-align:center;margin:0 0 22px}
+.overlay p{color:#cbd5e1;text-align:center;line-height:1.7}
+.mode-group{width:min(90vw,720px);display:flex;gap:16px}
+.mode-btn{flex:1;padding:18px 12px;border:2px solid #38bdf8;border-radius:14px;background:#1e293b;color:#fff;font-size:clamp(16px,3vw,21px);font-weight:900}
+.mode-btn.selected{background:#38bdf8;color:#0f172a}
+.setting{margin:10px 0 24px;font-size:19px;font-weight:900;color:#cbd5e1;text-align:center}
+.setting select{font-size:19px;font-weight:900;padding:9px 15px;border:2px solid #38bdf8;border-radius:9px;background:#0f172a;color:#fff}
+.btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.action{border:0;border-radius:12px;padding:13px 22px;font-size:17px;font-weight:900}
+.blue{background:#38bdf8;color:#0f172a}.green{background:#4ade80;color:#0f172a}.red{background:#ef4444;color:#fff}.gray{background:#475569;color:#fff}
+.result-box{text-align:center;color:#cbd5e1;font-size:20px;line-height:1.9;margin-bottom:20px}
+.result-box strong{color:#facc15;font-size:32px}
+.small{font-size:13px;color:#94a3b8;margin-top:14px;text-align:center;line-height:1.6}
 @media (min-aspect-ratio:1/1){
-  .main{flex-direction:row}
-  .mode-group{max-width:720px}
-  .app.quiz-mode .main{flex-direction:column}
+ .main{flex-direction:row}
+ .game-card{flex:0 0 40%}
+ .map-card{flex:1}
+ .app.quiz-mode .main{flex-direction:column}
+ .app.quiz-mode .game-card{display:none}
+ .app.quiz-mode .map-card{flex:1}
 }
-@media (max-width:600px) and (orientation:portrait){
-  .mode-group{flex-direction:column;max-width:360px}
-  .mode-btn{padding:20px 10px}
-  .game-card{padding:12px}
-  .map-card{min-height:280px}
-  .roma{min-height:76px}
-  .app{padding:6px;gap:6px}
-  .header{height:38px}
-  .pause{padding:8px 10px}
-  .quiz-controls{top:6px;left:6px;right:6px}
-  .hint-btn{font-size:14px;padding:8px 10px}
-  .quiz-status{font-size:12px;padding:6px 8px}
-  .quiz-bottom{bottom:6px;left:6px;right:6px}
-  .choices{gap:6px}
-  .choice-btn{min-height:44px;padding:7px 4px;font-size:15px}
+@media(max-width:600px) and (orientation:portrait){
+ .app{padding:7px;gap:7px}
+ .header{height:38px}
+ .main{gap:7px}
+ .game-card{flex:0 0 43%;padding:8px;gap:5px}
+ .map-card{min-height:0}
+ .mode-group{flex-direction:column;max-width:360px}
+ .mode-btn{padding:17px 10px}
+ .answer-input{font-size:20px;padding:10px}
+ .map-status{top:8px;right:8px;padding:7px 9px;gap:6px}
+ .quiz-tools{top:8px;left:8px}
+ .hint-btn{padding:10px 12px}
+ .quiz-input-wrap{left:8px;right:8px;bottom:46px}
 }
 </style>
 </head>
@@ -87,16 +90,16 @@ button{cursor:pointer}
 <div class="app" id="app">
   <div class="header">
     <div class="title" id="mode-label">地名タイピング</div>
-    <div class="header-right">
-      <button class="pause" id="pause-btn" onclick="pauseGame()" style="display:none">⏸ 一時停止</button>
-    </div>
+    <button class="pause" id="pause-btn" onclick="pauseGame()" style="display:none">⏸ 一時停止</button>
   </div>
 
   <div class="main">
-    <section class="game-card">
+    <section class="game-card" id="game-card">
       <div class="kanji" id="kanji">---</div>
       <div class="kana" id="kana">---</div>
       <div class="roma" id="roma">---</div>
+      <input class="answer-input" id="typing-input" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="ローマ字を入力" aria-label="ローマ字入力">
+      <div class="input-help">入力欄をタップして、ローマ字で答えよう</div>
       <div class="status">
         <div>スコア: <span id="score" style="color:#4ade80">0</span></div>
         <div>正解: <span id="correct" style="color:#38bdf8">0</span></div>
@@ -107,52 +110,48 @@ button{cursor:pointer}
 
     <section class="map-card">
       <div class="loading" id="map-loading">地図を読み込んでいます…</div>
-      <svg id="map" class="map-svg" viewBox="0 0 850 680" preserveAspectRatio="xMidYMid meet"></svg>
-
-      <div class="quiz-controls" id="quiz-controls">
+      <div class="quiz-tools" id="quiz-tools" style="display:none">
         <button class="hint-btn" id="hint-btn" onclick="toggleHint()">💡 ヒントオン</button>
-        <div class="quiz-status">
-          スコア <span id="q-score">0</span>　
-          正解 <span id="q-correct">0</span>　
-          ミス <span id="q-miss">0</span><br>
-          残り <span id="q-time">60</span> 秒
+        <div class="quiz-hint" id="quiz-hint">
+          読み方：<span class="hint-kana" id="hint-kana"></span><br>
+          ローマ字のヒント：<span class="hint-roma" id="hint-roma"></span>
         </div>
       </div>
-
-      <div class="quiz-bottom" id="quiz-bottom">
-        <div class="quiz-message" id="quiz-message">赤い丸の場所はどこかな？</div>
-        <div class="choices" id="choices" style="display:none"></div>
+      <div class="map-status" id="map-status" style="display:none">
+        <span>スコア <b id="map-score" style="color:#4ade80">0</b></span>
+        <span>正解 <b id="map-correct" style="color:#38bdf8">0</b></span>
+        <span>ミス <b id="map-miss" style="color:#f87171">0</b></span>
+        <span>残り <b id="map-time" style="color:#facc15">60</b>秒</span>
       </div>
+      <svg id="map" class="map-svg" viewBox="0 0 850 680" preserveAspectRatio="xMidYMid meet"></svg>
+      <div class="quiz-input-wrap" id="quiz-input-wrap">
+        <input class="answer-input" id="quiz-input" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="ここをタップしてローマ字入力" aria-label="クイズのローマ字入力">
+      </div>
+      <div class="quiz-message" id="quiz-message" style="display:none">赤い丸の場所を考えて、ローマ字で入力しよう！</div>
     </section>
   </div>
 </div>
 
-<!-- 1. 地域を選択 -->
 <div class="overlay" id="mode-overlay">
-  <h1>地域を選択してください</h1>
+  <h1>どの地名に挑戦する？</h1>
   <div class="mode-group">
     <button class="mode-btn selected" id="aomori-btn" onclick="selectMode('aomori')">🍎 青森県40市町村</button>
     <button class="mode-btn" id="pref-btn" onclick="selectMode('pref')">🗾 47都道府県</button>
   </div>
 </div>
 
-<!-- 2. ゲーム形式を選択 -->
 <div class="overlay" id="type-overlay" style="display:none">
-  <h1>ゲームを選択してください</h1>
+  <h1>遊び方を選択してください</h1>
   <div class="mode-group">
     <button class="mode-btn selected" id="typing-btn" onclick="selectGameType('typing')">⌨️ タイピング</button>
-    <button class="mode-btn" id="quiz-btn" onclick="selectGameType('quiz')">🗺️ 地名クイズ</button>
+    <button class="mode-btn" id="quiz-btn" onclick="selectGameType('quiz')">🗺️ 地図クイズ</button>
   </div>
-  <div class="btns" style="margin-top:24px">
-    <button class="action blue" onclick="backToMode()">地域選択に戻る</button>
-    <button class="action green" onclick="goToSettings()">次へ</button>
-  </div>
+  <p class="small">タイピングは地名を見て入力。地図クイズは赤い丸の場所を考えて入力します。</p>
+  <div class="btns"><button class="action blue" onclick="backToMode()">地域選択へ戻る</button><button class="action green" onclick="goToSettings()">次へ</button></div>
 </div>
 
-<!-- 3. 制限時間を選択 -->
 <div class="overlay" id="start-overlay" style="display:none">
   <h1 id="start-title">🍎 青森県40市町村</h1>
-  <div id="selected-type" style="font-size:20px;font-weight:900;color:#4ade80;margin-bottom:8px">⌨️ タイピング</div>
   <div class="setting">⏱ 持ち時間：
     <select id="time-select">
       <option value="1">1 分</option>
@@ -161,6 +160,7 @@ button{cursor:pointer}
       <option value="5">5 分</option>
     </select>
   </div>
+  <p id="start-description">表示された地名をローマ字で入力しよう！</p>
   <div class="btns">
     <button class="action blue" onclick="backToType()">戻る</button>
     <button class="action green" onclick="startGame()">スタート！</button>
@@ -169,19 +169,14 @@ button{cursor:pointer}
 
 <div class="overlay" id="pause-overlay" style="display:none">
   <h1>⏸ 一時停止中</h1>
-  <div class="btns">
-    <button class="action green" onclick="resumeGame()">再開</button>
-    <button class="action red" onclick="showExitConfirm()">終了</button>
-  </div>
+  <p>再開すると、残り時間から続けられます。</p>
+  <div class="btns"><button class="action green" onclick="resumeGame()">再開</button><button class="action red" onclick="showExitConfirm()">終了</button></div>
 </div>
 
 <div class="overlay" id="confirm-overlay" style="display:none">
   <h1>ゲームを終了しますか？</h1>
-  <p style="color:#cbd5e1;margin-bottom:22px">現在の記録は終了します。</p>
-  <div class="btns">
-    <button class="action red" onclick="exitGame()">はい</button>
-    <button class="action blue" onclick="cancelExit()">いいえ</button>
-  </div>
+  <p>現在の記録でゲームを終了します。</p>
+  <div class="btns"><button class="action red" onclick="exitGame()">はい</button><button class="action blue" onclick="cancelExit()">いいえ</button></div>
 </div>
 
 <div class="overlay" id="result-overlay" style="display:none">
@@ -191,10 +186,7 @@ button{cursor:pointer}
     正解数　<span id="result-correct">0</span> 問<br>
     ミス　　<span id="result-miss">0</span> 回
   </div>
-  <div class="btns">
-    <button class="action blue" onclick="backToMode()">地域選択</button>
-    <button class="action green" onclick="restartGame()">もう一度</button>
-  </div>
+  <div class="btns"><button class="action blue" onclick="backToMode()">地域選択へ</button><button class="action green" onclick="restartGame()">もう一度</button></div>
 </div>
 
 <script>
@@ -245,7 +237,6 @@ const PREF=[
 ["北海道","ほっかいどう","hokkaido","01"],["青森県","あおもりけん","aomori","02"],["岩手県","いわてけん","iwate","03"],["宮城県","みやぎけん","miyagi","04"],["秋田県","あきたけん","akita","05"],["山形県","やまがたけん","yamagata","06"],["福島県","ふくしまけん","fukushima","07"],["茨城県","いばらきけん","ibaraki","08"],["栃木県","とちぎけん","tochigi","09"],["群馬県","ぐんまけん","gunma","10"],["埼玉県","さいたまけん","saitama","11"],["千葉県","ちばけん","chiba","12"],["東京都","とうきょうと","tokyo","13"],["神奈川県","かながわけん","kanagawa","14"],["新潟県","にいがたけん","niigata","15"],["富山県","とやまけん","toyama","16"],["石川県","いしかわけん","ishikawa","17"],["福井県","ふくいけん","fukui","18"],["山梨県","やまなしけん","yamanashi","19"],["長野県","ながのけん","nagano","20"],["岐阜県","ぎふけん","gifu","21"],["静岡県","しずおかけん","shizuoka","22"],["愛知県","あいちけん","aichi","23"],["三重県","みえけん","mie","24"],["滋賀県","しがけん","shiga","25"],["京都府","きょうとふ","kyoto","26"],["大阪府","おおさかふ","osaka","27"],["兵庫県","ひょうごけん","hyogo","28"],["奈良県","ならけん","nara","29"],["和歌山県","わかやまけん","wakayama","30"],["鳥取県","とっとりけん","tottori","31"],["島根県","しまねけん","shimane","32"],["岡山県","おかやまけん","okayama","33"],["広島県","ひろしまけん","hiroshima","34"],["山口県","やまぐちけん","yamaguchi","35"],["徳島県","とくしまけん","tokushima","36"],["香川県","かがわけん","kagawa","37"],["愛媛県","えひめけん","ehime","38"],["高知県","こうちけん","kochi","39"],["福岡県","ふくおかけん","fukuoka","40"],["佐賀県","さがけん","saga","41"],["長崎県","ながさきけん","nagasaki","42"],["熊本県","くまもとけん","kumamoto","43"],["大分県","おおいたけん","oita","44"],["宮崎県","みやざきけん","miyazaki","45"],["鹿児島県","かごしまけん","kagoshima","46"],["沖縄県","おきなわけん","okinawa","47"]
 ].map(x=>({k:x[0],y:x[1],r:x[2],id:x[3]}));
 
-/* ヘボン式・訓令式の両方を正解にする */
 const KUNREI_TOKEN=/(shi|chi|tsu|fu|ji|sha|shu|sho|cha|chu|cho|ja|ju|jo)/;
 const KUNREI_MAP={shi:"si",chi:"ti",tsu:"tu",fu:"hu",ji:"zi",sha:"sya",shu:"syu",sho:"syo",cha:"tya",chu:"tyu",cho:"tyo",ja:"zya",ju:"zyu",jo:"zyo"};
 const spellCache=new Map();
@@ -265,7 +256,239 @@ function pickSpelling(hep,typed){
   return acceptedSpellings(hep).find(s=>s.startsWith(typed))||hep;
 }
 
-/* 地図用の幾何計算 */
+let mode="aomori";
+let gameType="typing";
+let list=[],current=null,typed="",score=0,correct=0,miss=0,timeLeft=60,timer=null,playing=false,paused=false;
+let hintOn=false;
+let mapData=null;
+
+function el(id){return document.getElementById(id)}
+
+function selectMode(m){
+  mode=m;
+  el("aomori-btn").classList.toggle("selected",m==="aomori");
+  el("pref-btn").classList.toggle("selected",m==="pref");
+  hideAllOverlays();
+  el("type-overlay").style.display="flex";
+}
+function selectGameType(t){
+  gameType=t;
+  el("typing-btn").classList.toggle("selected",t==="typing");
+  el("quiz-btn").classList.toggle("selected",t==="quiz");
+}
+function goToSettings(){
+  hideAllOverlays();
+  const area=mode==="aomori"?"🍎 青森県40市町村":"🗾 47都道府県";
+  el("start-title").textContent=area+(gameType==="quiz"?"・地図クイズ":"・タイピング");
+  el("start-description").textContent=gameType==="quiz"
+    ?"赤い丸の場所を考えて、ローマ字で入力しよう！ヒントは必要なときだけオンにできます。"
+    :"表示された地名をローマ字で入力しよう！";
+  el("start-overlay").style.display="flex";
+  renderMap();
+}
+function backToType(){
+  hideAllOverlays();
+  el("type-overlay").style.display="flex";
+}
+function backToMode(){
+  playing=false;paused=false;clearInterval(timer);
+  hideAllOverlays();
+  el("mode-overlay").style.display="flex";
+  el("pause-btn").style.display="none";
+  el("app").classList.remove("quiz-mode");
+  clearPin();
+  el("quiz-tools").style.display="none";
+  el("map-status").style.display="none";
+  el("quiz-message").style.display="none";
+}
+function startGame(){
+  clearInterval(timer);
+  timeLeft=Number(el("time-select").value)*60;
+  list=(mode==="aomori"?AOMORI:PREF).map(x=>({...x}));
+  score=correct=miss=0;
+  typed="";
+  playing=true;
+  paused=false;
+  hintOn=false;
+
+  el("score").textContent=0;
+  el("correct").textContent=0;
+  el("miss").textContent=0;
+  el("time").textContent=timeLeft;
+  updateMapStatus();
+
+  el("app").classList.toggle("quiz-mode",gameType==="quiz");
+  el("pause-btn").style.display="block";
+  el("quiz-tools").style.display=gameType==="quiz"?"flex":"none";
+  el("map-status").style.display=gameType==="quiz"?"flex":"none";
+  el("quiz-message").style.display=gameType==="quiz"?"block":"none";
+  el("quiz-hint").classList.remove("visible");
+  el("hint-btn").classList.remove("on");
+  el("hint-btn").textContent="💡 ヒントオン";
+
+  hideAllOverlays();
+  nextQuestion();
+  startTimer();
+
+  // タップして入力欄を使えるようにする。自動でキーボードを開くのは
+  // ブラウザの仕様上、ユーザー操作が必要な場合があります。
+  setTimeout(()=>{
+    const input=gameType==="quiz"?el("quiz-input"):el("typing-input");
+    if(input)input.focus();
+  },100);
+}
+function restartGame(){
+  hideAllOverlays();
+  startGame();
+}
+function startTimer(){
+  clearInterval(timer);
+  timer=setInterval(()=>{
+    if(!playing||paused)return;
+    timeLeft--;
+    el("time").textContent=timeLeft;
+    updateMapStatus();
+    if(timeLeft<=0)endGame();
+  },1000);
+}
+function pauseGame(){
+  if(!playing||paused)return;
+  paused=true;
+  el("pause-overlay").style.display="flex";
+}
+function resumeGame(){
+  paused=false;
+  el("pause-overlay").style.display="none";
+  const input=gameType==="quiz"?el("quiz-input"):el("typing-input");
+  if(input)input.focus();
+}
+function showExitConfirm(){
+  el("pause-overlay").style.display="none";
+  el("confirm-overlay").style.display="flex";
+}
+function cancelExit(){
+  el("confirm-overlay").style.display="none";
+  el("pause-overlay").style.display="flex";
+}
+function exitGame(){
+  playing=false;paused=false;clearInterval(timer);
+  hideAllOverlays();
+  el("mode-overlay").style.display="flex";
+  el("pause-btn").style.display="none";
+  el("app").classList.remove("quiz-mode");
+  clearPin();
+}
+function endGame(){
+  playing=false;paused=false;clearInterval(timer);
+  el("pause-btn").style.display="none";
+  el("result-score").textContent=score;
+  el("result-correct").textContent=correct;
+  el("result-miss").textContent=miss;
+  el("result-overlay").style.display="flex";
+}
+function hideAllOverlays(){
+  ["mode-overlay","type-overlay","start-overlay","pause-overlay","confirm-overlay","result-overlay"].forEach(id=>el(id).style.display="none");
+}
+function updateMapStatus(){
+  el("map-score").textContent=score;
+  el("map-correct").textContent=correct;
+  el("map-miss").textContent=miss;
+  el("map-time").textContent=timeLeft;
+}
+
+function nextQuestion(){
+  if(!playing)return;
+  if(!list.length)list=(mode==="aomori"?AOMORI:PREF).map(x=>({...x}));
+  current=list.splice(Math.floor(Math.random()*list.length),1)[0];
+  typed="";
+  el("typing-input").value="";
+  el("quiz-input").value="";
+  el("typing-input").classList.remove("mistyped");
+  el("quiz-input").classList.remove("mistyped");
+
+  if(gameType==="typing"){
+    el("kanji").textContent=current.k;
+    el("kana").textContent=current.y;
+    el("roma").style.display="block";
+    renderRoma();
+  }else{
+    el("kanji").textContent="地図の場所はどこ？";
+    el("kana").textContent="";
+    // クイズでは正解の地名・読み仮名を通常表示しない
+    el("roma").style.display="none";
+    el("quiz-message").textContent="赤い丸の場所を考えて、ローマ字で入力しよう！";
+    updateHint();
+  }
+  renderMap(current.id);
+}
+function renderRoma(){
+  if(!current)return;
+  const target=pickSpelling(current.r,typed);
+  const typedHtml=typed.split("").map(c=>`<span class="typed">${escapeHtml(c)}</span>`).join("");
+  const rest=target.slice(typed.length);
+  el("roma").innerHTML=typedHtml+`<span class="untyped">${escapeHtml(rest)}</span>`;
+}
+function updateHint(){
+  if(!current)return;
+  // ヒントは読み仮名と、ローマ字の最初の文字だけを表示
+  el("hint-kana").textContent=current.y;
+  const first=current.r.charAt(0);
+  el("hint-roma").textContent=first+" · ".repeat(Math.max(2,Math.min(current.r.length-1,8)));
+}
+function toggleHint(){
+  if(!playing||gameType!=="quiz")return;
+  hintOn=!hintOn;
+  el("hint-btn").classList.toggle("on",hintOn);
+  el("hint-btn").textContent=hintOn?"💡 ヒントオフ":"💡 ヒントオン";
+  el("quiz-hint").classList.toggle("visible",hintOn);
+  updateHint();
+  const input=el("quiz-input");
+  if(input)input.focus();
+}
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+function handleAnswerInput(which){
+  if(!playing||paused||!current)return;
+  const input=which==="quiz"?el("quiz-input"):el("typing-input");
+  const raw=input.value.toLowerCase().replace(/[^a-z-]/g,"");
+  const candidates=acceptedSpellings(current.r);
+  const last=raw.slice(-1);
+
+  // 入力欄へ貼り付けた場合や複数文字の入力にも対応
+  let candidateTyped=typed;
+  for(const ch of raw.slice(typed.length)){
+    if(candidates.some(s=>s.startsWith(candidateTyped+ch))){
+      candidateTyped+=ch;
+      typed=candidateTyped;
+      if(candidates.some(s=>s===typed)){
+        score+=10;
+        correct++;
+        el("score").textContent=score;
+        el("correct").textContent=correct;
+        updateMapStatus();
+        nextQuestion();
+        return;
+      }
+    }else{
+      miss++;
+      el("miss").textContent=miss;
+      updateMapStatus();
+      input.classList.add("mistyped");
+      input.value=typed;
+      setTimeout(()=>input.classList.remove("mistyped"),250);
+      return;
+    }
+  }
+
+  input.value=typed;
+  if(gameType==="typing")renderRoma();
+}
+el("typing-input").addEventListener("input",()=>handleAnswerInput("typing"));
+el("quiz-input").addEventListener("input",()=>handleAnswerInput("quiz"));
+
+/* ---- 地図描画 ---- */
 function polygonsOf(f){
   const g=f&&f.geometry;
   if(!g)return [];
@@ -341,263 +564,11 @@ function pinPointOf(features,precision){
   return polylabel(best,precision);
 }
 
-/* ゲーム状態 */
-let mode="aomori";
-let gameType="typing";
-let list=[],current=null,typed="";
-let score=0,correct=0,miss=0,timeLeft=60,timer=null;
-let playing=false,paused=false;
-let hintOn=false,quizOptions=[],quizAnswered=false,answerDelay=null;
-let mapData=null;
-
-function selectMode(m){
-  mode=m;
-  document.getElementById("aomori-btn").classList.toggle("selected",m==="aomori");
-  document.getElementById("pref-btn").classList.toggle("selected",m==="pref");
-  renderMap();
-  hideAllOverlays();
-  document.getElementById("type-overlay").style.display="flex";
-}
-function selectGameType(t){
-  gameType=t;
-  document.getElementById("typing-btn").classList.toggle("selected",t==="typing");
-  document.getElementById("quiz-btn").classList.toggle("selected",t==="quiz");
-}
-function goToSettings(){
-  document.getElementById("start-title").textContent=mode==="aomori"?"🍎 青森県40市町村":"🗾 47都道府県";
-  document.getElementById("selected-type").textContent=gameType==="typing"?"⌨️ タイピング":"🗺️ 地名クイズ";
-  hideAllOverlays();
-  document.getElementById("start-overlay").style.display="flex";
-}
-function backToType(){
-  hideAllOverlays();
-  document.getElementById("type-overlay").style.display="flex";
-}
-function backToMode(){
-  playing=false;paused=false;clearInterval(timer);clearTimeout(answerDelay);
-  hideAllOverlays();
-  document.getElementById("mode-overlay").style.display="flex";
-  document.getElementById("pause-btn").style.display="none";
-  document.getElementById("app").classList.remove("quiz-mode");
-  clearPin();
-}
-function startGame(){
-  clearTimeout(answerDelay);
-  timeLeft=Number(document.getElementById("time-select").value)*60;
-  list=(mode==="aomori"?AOMORI:PREF).map(x=>({...x}));
-  score=correct=miss=0;typed="";playing=true;paused=false;
-  hintOn=false;quizAnswered=false;quizOptions=[];
-  document.getElementById("app").classList.toggle("quiz-mode",gameType==="quiz");
-  document.getElementById("mode-label").textContent=
-    (mode==="aomori"?"🍎 青森県40市町村":"🗾 47都道府県")+
-    (gameType==="quiz"?"・クイズ":"・タイピング");
-  updateStatus();
-  document.getElementById("pause-btn").style.display="block";
-  document.getElementById("hint-btn").textContent="💡 ヒントオン";
-  document.getElementById("choices").style.display="none";
-  document.getElementById("quiz-message").textContent="赤い丸の場所はどこかな？";
-  hideAllOverlays();
-  nextQuestion();
-  startTimer();
-}
-function restartGame(){
-  document.getElementById("result-overlay").style.display="none";
-  startGame();
-}
-function updateStatus(){
-  document.getElementById("score").textContent=score;
-  document.getElementById("correct").textContent=correct;
-  document.getElementById("miss").textContent=miss;
-  document.getElementById("time").textContent=timeLeft;
-  document.getElementById("q-score").textContent=score;
-  document.getElementById("q-correct").textContent=correct;
-  document.getElementById("q-miss").textContent=miss;
-  document.getElementById("q-time").textContent=timeLeft;
-}
-function startTimer(){
-  clearInterval(timer);
-  timer=setInterval(()=>{
-    if(!playing||paused)return;
-    timeLeft--;
-    updateStatus();
-    if(timeLeft<=0)endGame();
-  },1000);
-}
-function pauseGame(){
-  if(!playing||paused)return;
-  paused=true;
-  document.getElementById("pause-overlay").style.display="flex";
-}
-function resumeGame(){
-  paused=false;
-  document.getElementById("pause-overlay").style.display="none";
-}
-function showExitConfirm(){
-  document.getElementById("pause-overlay").style.display="none";
-  document.getElementById("confirm-overlay").style.display="flex";
-}
-function cancelExit(){
-  document.getElementById("confirm-overlay").style.display="none";
-  document.getElementById("pause-overlay").style.display="flex";
-}
-function exitGame(){
-  playing=false;paused=false;
-  clearInterval(timer);clearTimeout(answerDelay);
-  hideAllOverlays();
-  document.getElementById("mode-overlay").style.display="flex";
-  document.getElementById("pause-btn").style.display="none";
-  document.getElementById("app").classList.remove("quiz-mode");
-  clearPin();
-}
-function endGame(){
-  playing=false;paused=false;
-  clearInterval(timer);clearTimeout(answerDelay);
-  document.getElementById("pause-btn").style.display="none";
-  clearPin();
-  document.getElementById("result-score").textContent=score;
-  document.getElementById("result-correct").textContent=correct;
-  document.getElementById("result-miss").textContent=miss;
-  document.getElementById("result-overlay").style.display="flex";
-}
-function hideAllOverlays(){
-  ["mode-overlay","type-overlay","start-overlay","pause-overlay","confirm-overlay","result-overlay"].forEach(id=>{
-    document.getElementById(id).style.display="none";
-  });
-}
-
-/* 出題 */
-function nextQuestion(){
-  if(!playing)return;
-  clearTimeout(answerDelay);
-  if(!list.length)list=(mode==="aomori"?AOMORI:PREF).map(x=>({...x}));
-  current=list.splice(Math.floor(Math.random()*list.length),1)[0];
-  typed="";quizAnswered=false;
-  renderMap(current.id);
-
-  if(gameType==="typing"){
-    document.getElementById("kanji").textContent=current.k;
-    document.getElementById("kana").textContent=current.y;
-    renderRoma();
-  }else{
-    document.getElementById("kanji").textContent="---";
-    document.getElementById("kana").textContent="赤い丸の場所を当てよう！";
-    document.getElementById("roma").textContent="地図をよく見よう";
-    makeQuizOptions();
-    renderChoices();
-    document.getElementById("quiz-message").textContent="赤い丸の場所はどこかな？";
-  }
-}
-
-/* クイズの4択を作る */
-function makeQuizOptions(){
-  const source=mode==="aomori"?AOMORI:PREF;
-  const wrong=source.filter(x=>x.id!==current.id);
-  for(let i=wrong.length-1;i>0;i--){
-    const j=Math.floor(Math.random()*(i+1));
-    [wrong[i],wrong[j]]=[wrong[j],wrong[i]];
-  }
-  quizOptions=[current,...wrong.slice(0,3)];
-  for(let i=quizOptions.length-1;i>0;i--){
-    const j=Math.floor(Math.random()*(i+1));
-    [quizOptions[i],quizOptions[j]]=[quizOptions[j],quizOptions[i]];
-  }
-}
-function renderChoices(){
-  const box=document.getElementById("choices");
-  box.innerHTML="";
-  quizOptions.forEach(item=>{
-    const btn=document.createElement("button");
-    btn.className="choice-btn";
-    btn.textContent=item.k;
-    btn.onclick=()=>answerQuiz(item,btn);
-    box.appendChild(btn);
-  });
-  box.style.display=hintOn?"grid":"none";
-}
-function toggleHint(){
-  if(!playing||gameType!=="quiz")return;
-  hintOn=!hintOn;
-  document.getElementById("hint-btn").textContent=hintOn?"💡 ヒントオフ":"💡 ヒントオン";
-  renderChoices();
-  if(hintOn&&!quizAnswered){
-    document.getElementById("quiz-message").textContent="4つの中から選ぼう！";
-  }else if(!hintOn&&!quizAnswered){
-    document.getElementById("quiz-message").textContent="赤い丸の場所を考えよう。答えるときはヒントオン！";
-  }
-}
-function answerQuiz(item,btn){
-  if(!playing||paused||quizAnswered)return;
-  quizAnswered=true;
-  const buttons=document.querySelectorAll(".choice-btn");
-  buttons.forEach(b=>{
-    b.disabled=true;
-    const option=quizOptions.find(x=>x.k===b.textContent);
-    if(option&&option.id===current.id)b.classList.add("correct-answer");
-  });
-
-  if(item.id===current.id){
-    score+=10;correct++;
-    document.getElementById("quiz-message").textContent="⭕ 正解！「"+current.k+"」";
-  }else{
-    miss++;
-    btn.classList.add("wrong-answer");
-    document.getElementById("quiz-message").textContent="❌ 正解は「"+current.k+"」";
-  }
-  updateStatus();
-  answerDelay=setTimeout(()=>{
-    if(playing)nextQuestion();
-  },1100);
-}
-
-/* タイピング */
-function renderRoma(){
-  if(!current)return;
-  const target=pickSpelling(current.r,typed);
-  const typedHtml=typed.split("").map(c=>`<span class="typed">${escapeHtml(c)}</span>`).join("");
-  const rest=target.slice(typed.length);
-  document.getElementById("roma").innerHTML=typedHtml+`<span class="untyped">${escapeHtml(rest)}</span>`;
-}
-function showMistake(key){
-  const target=pickSpelling(current.r,typed);
-  const before=target.slice(0,typed.length);
-  const rest=target.slice(typed.length);
-  document.getElementById("roma").innerHTML=
-    before.split("").map(c=>`<span class="typed">${escapeHtml(c)}</span>`).join("")+
-    `<span class="mistyped">${escapeHtml(key)}</span>`+
-    `<span class="untyped">${escapeHtml(rest)}</span>`;
-}
-function escapeHtml(s){
-  return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-}
-window.addEventListener("keydown",e=>{
-  if(!playing||paused||!current||gameType!=="typing")return;
-  if(e.key.length!==1||!/^[a-z-]$/i.test(e.key))return;
-  const key=e.key.toLowerCase();
-  const candidates=acceptedSpellings(current.r);
-  const possible=candidates.some(s=>s.startsWith(typed+key));
-  if(possible){
-    typed+=key;
-    renderRoma();
-    if(candidates.some(s=>s===typed)){
-      score+=10;correct++;
-      updateStatus();
-      nextQuestion();
-    }
-  }else{
-    miss++;
-    updateStatus();
-    showMistake(key);
-    setTimeout(()=>{if(playing&&!paused&&gameType==="typing")renderRoma()},220);
-  }
-});
-
-/* 地図 */
 let atlas={ready:false};
 let drawnMode=null,mapView=null,pinLayer=null;
 const pinCache=new Map();
 const isAomoriId=id=>String(id).padStart(5,"0").slice(0,2)==="02";
 const idKey=(id,width)=>String(id).padStart(width,"0");
-
 function groupById(features,width){
   const m=new Map();
   for(const f of features){
@@ -613,10 +584,10 @@ async function loadMap(){
     prepareAtlas();
     drawnMode=null;
     renderMap(playing&&current?current.id:null);
-    document.getElementById("map-loading").style.display="none";
+    el("map-loading").style.display="none";
   }catch(err){
     console.error(err);
-    document.getElementById("map-loading").textContent="地図を読み込めませんでした。インターネット接続を確認してください。";
+    el("map-loading").textContent="地図を読み込めませんでした。通信環境を確認してください。";
   }
 }
 function prepareAtlas(){
@@ -647,8 +618,7 @@ function drawBase(){
   const bounds=mode==="aomori"
     ?path.bounds({type:"FeatureCollection",features:atlas.aomoriMuni})
     :path.bounds(atlas.country);
-  const w=Math.max(1,bounds[1][0]-bounds[0][0]);
-  const h=Math.max(1,bounds[1][1]-bounds[0][1]);
+  const w=Math.max(1,bounds[1][0]-bounds[0][0]),h=Math.max(1,bounds[1][1]-bounds[0][1]);
   const padding=35;
   const scale=Math.min((850-padding*2)/w,(680-padding*2)/h);
   const tx=(850-scale*(bounds[0][0]+bounds[1][0]))/2;
