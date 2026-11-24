@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -256,13 +255,29 @@ function pickSpelling(hep,typed){
   return acceptedSpellings(hep).find(s=>s.startsWith(typed))||hep;
 }
 
+/* 周回ごとの塗り色（1周目, 2周目, ...。足りなければ繰り返し） */
+const ROUND_COLORS=["#16a34a","#2563eb","#c026d3","#ea580c","#0891b2","#ca8a04","#e11d48","#7c3aed"];
+function roundColor(n){return ROUND_COLORS[(n-1)%ROUND_COLORS.length]}
+
 let mode="aomori";
 let gameType="typing";
 let list=[],current=null,typed="",score=0,correct=0,miss=0,timeLeft=60,timer=null,playing=false,paused=false;
 let hintOn=false;
 let mapData=null;
+let round=1;                 // 現在の周回
+const doneRound=new Map();   // 地名id -> 最後に正解した周回
 
 function el(id){return document.getElementById(id)}
+
+function resetProgress(){
+  round=1;
+  doneRound.clear();
+  updateRoundLabel();
+}
+function updateRoundLabel(){
+  const base="地名タイピング";
+  el("mode-label").textContent=(playing&&round>1)?`${base}　🔁 ${round}周目`:base;
+}
 
 function selectMode(m){
   mode=m;
@@ -282,8 +297,9 @@ function goToSettings(){
   el("start-title").textContent=area+(gameType==="quiz"?"・地図クイズ":"・タイピング");
   el("start-description").textContent=gameType==="quiz"
     ?"赤い丸の場所を考えて、ローマ字で入力しよう！ヒントは必要なときだけオンにできます。"
-    :"表示された地名をローマ字で入力しよう！";
+    :"表示された地名をローマ字で入力しよう！答えた場所は地図が色づくよ。全部答えたら、次の色でもう一周！";
   el("start-overlay").style.display="flex";
+  resetProgress();
   renderMap();
 }
 function backToType(){
@@ -297,6 +313,8 @@ function backToMode(){
   el("pause-btn").style.display="none";
   el("app").classList.remove("quiz-mode");
   clearPin();
+  resetProgress();
+  paintDone();
   el("quiz-tools").style.display="none";
   el("map-status").style.display="none";
   el("quiz-message").style.display="none";
@@ -310,6 +328,8 @@ function startGame(){
   playing=true;
   paused=false;
   hintOn=false;
+  resetProgress();
+  paintDone();
 
   el("score").textContent=0;
   el("correct").textContent=0;
@@ -377,6 +397,8 @@ function exitGame(){
   el("pause-btn").style.display="none";
   el("app").classList.remove("quiz-mode");
   clearPin();
+  resetProgress();
+  paintDone();
 }
 function endGame(){
   playing=false;paused=false;clearInterval(timer);
@@ -398,7 +420,13 @@ function updateMapStatus(){
 
 function nextQuestion(){
   if(!playing)return;
-  if(!list.length)list=(mode==="aomori"?AOMORI:PREF).map(x=>({...x}));
+  if(!list.length){
+    // 全部答え終わったので次の周回へ（地図は前の色のまま、答えるたびに新しい色へ）
+    round++;
+    list=(mode==="aomori"?AOMORI:PREF).map(x=>({...x}));
+    updateRoundLabel();
+    if(gameType==="quiz")el("quiz-message").textContent=`🔁 ${round}周目スタート！`;
+  }
   current=list.splice(Math.floor(Math.random()*list.length),1)[0];
   typed="";
   el("typing-input").value="";
@@ -416,7 +444,7 @@ function nextQuestion(){
     el("kana").textContent="";
     // クイズでは正解の地名・読み仮名を通常表示しない
     el("roma").style.display="none";
-    el("quiz-message").textContent="赤い丸の場所を考えて、ローマ字で入力しよう！";
+    if(round===1||list.length!==(mode==="aomori"?AOMORI:PREF).length-1)el("quiz-message").textContent="赤い丸の場所を考えて、ローマ字で入力しよう！";
     updateHint();
   }
   renderMap(current.id);
@@ -468,6 +496,8 @@ function handleAnswerInput(which){
         el("score").textContent=score;
         el("correct").textContent=correct;
         updateMapStatus();
+        // 正解した地名を、今の周回の色で塗る
+        doneRound.set(current.id,round);
         nextQuestion();
         return;
       }
@@ -598,6 +628,7 @@ function prepareAtlas(){
     ready:true,
     country:topojson.feature(mapData,o.country),
     prefMesh:topojson.mesh(mapData,o.prefectures,(a,b)=>a!==b),
+    prefFeatures:prefs,
     prefById:groupById(prefs,2),
     aomoriPref:prefs.find(f=>idKey(f.id,2)==="02")||null,
     aomoriMuni,
@@ -609,7 +640,17 @@ function prepareAtlas(){
 function renderMap(highlightId=null){
   if(!mapData||!atlas.ready)return;
   if(drawnMode!==mode)drawBase();
+  paintDone();
   showPin(highlightId);
+}
+/* 正解済みの地名を、周回ごとの色で塗る */
+function paintDone(){
+  if(!atlas.ready)return;
+  const width=mode==="aomori"?5:2;
+  d3.select("#map").selectAll("path.area").style("fill",function(d){
+    const r=doneRound.get(idKey(d.id,width));
+    return r?roundColor(r):null;
+  });
 }
 function drawBase(){
   const svg=d3.select("#map");
@@ -626,12 +667,13 @@ function drawBase(){
   const group=svg.append("g").attr("transform",`translate(${tx},${ty}) scale(${scale})`);
 
   if(mode==="aomori"){
-    group.selectAll("path.muni").data(atlas.aomoriMuni).join("path")
-      .attr("class","map-bg muni").attr("d",path);
+    group.selectAll("path.area").data(atlas.aomoriMuni).join("path")
+      .attr("class","map-bg area").attr("d",path);
     group.append("path").datum(atlas.aomoriMesh).attr("class","muni-border").attr("d",path);
     if(atlas.aomoriPref)group.append("path").datum(atlas.aomoriPref).attr("class","pref-border").attr("d",path);
   }else{
-    group.append("path").datum(atlas.country).attr("class","map-bg").attr("d",path);
+    group.selectAll("path.area").data(atlas.prefFeatures).join("path")
+      .attr("class","map-bg area").attr("d",path);
     group.append("path").datum(atlas.prefMesh).attr("class","pref-border").attr("d",path);
   }
   pinLayer=group.append("g").attr("class","pin-layer");
