@@ -83,6 +83,19 @@ button{cursor:pointer}
  .hint-btn{padding:10px 12px}
  .quiz-input-wrap{left:8px;right:8px;bottom:46px}
 }
+/* キーボード練習 */
+.kb{display:none;--ks:clamp(20px,min(calc((100vw - 70px)/14.5),8vh),56px);flex-direction:column;gap:4px;align-items:flex-start;padding:10px;background:#0f172a;border:2px solid #334155;border-radius:14px}
+.kb-row{display:flex;gap:4px}
+.kb-row:nth-child(2){margin-left:calc(var(--ks)*.5)}
+.kb-row:nth-child(3){margin-left:calc(var(--ks)*.75)}
+.kb-row:nth-child(4){margin-left:calc(var(--ks)*1.25)}
+.key{width:var(--ks);height:var(--ks);display:flex;align-items:center;justify-content:center;border-radius:8px;background:#1e293b;border:1px solid #475569;color:#cbd5e1;font-weight:800;font-size:calc(var(--ks)*.42)}
+.key.on{background:#38bdf8;color:#0f172a;border-color:#fff;box-shadow:0 0 14px #38bdf8}
+.key.bad{background:#ef4444;color:#fff;border-color:#fff}
+.app.kb-mode .map-card{display:none}
+.app.kb-mode .game-card{flex:1;overflow:auto}
+.app.kb-mode .kb{display:flex}
+.app.kb-mode #typing-input,.app.kb-mode .input-help{display:none}
 </style>
 </head>
 <body>
@@ -98,7 +111,8 @@ button{cursor:pointer}
       <div class="kana" id="kana">---</div>
       <div class="roma" id="roma">---</div>
       <input class="answer-input" id="typing-input" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="ローマ字を入力" aria-label="ローマ字入力">
-      <div class="input-help">入力欄をタップして、ローマ字で答えよう</div>
+      <div class="kb" id="kb"></div>
+      <div class="input-help">日本語入力のままでもOK。スマホは入力欄をタップして、ローマ字で答えよう</div>
       <div class="status">
         <div>スコア: <span id="score" style="color:#4ade80">0</span></div>
         <div>正解: <span id="correct" style="color:#38bdf8">0</span></div>
@@ -144,8 +158,9 @@ button{cursor:pointer}
   <div class="mode-group">
     <button class="mode-btn selected" id="typing-btn" onclick="selectGameType('typing')">⌨️ タイピング</button>
     <button class="mode-btn" id="quiz-btn" onclick="selectGameType('quiz')">🗺️ 地図クイズ</button>
+    <button class="mode-btn" id="kb-btn" onclick="selectGameType('keyboard')">🎹 キーボード練習</button>
   </div>
-  <p class="small">タイピングは地名を見て入力。地図クイズは赤い丸の場所を考えて入力します。</p>
+  <p class="small">タイピングは地名を見て入力。地図クイズは赤い丸の場所を考えて入力。キーボード練習は光ったキーを押して練習します。</p>
   <div class="btns"><button class="action blue" onclick="backToMode()">地域選択へ戻る</button><button class="action green" onclick="goToSettings()">次へ</button></div>
 </div>
 
@@ -164,6 +179,12 @@ button{cursor:pointer}
     <button class="action blue" onclick="backToType()">戻る</button>
     <button class="action green" onclick="startGame()">スタート！</button>
   </div>
+</div>
+
+<div class="overlay" id="ready-overlay" style="display:none">
+  <h1>準備はいい？</h1>
+  <p><b style="color:#facc15">スペースキー</b>を押すとスタート！<br>（押すまでタイマーは動きません）</p>
+  <div class="btns"><button class="action gray" onclick="backToMode()">やめる</button><button class="action green" onclick="beginPlay()">タップしてスタート</button></div>
 </div>
 
 <div class="overlay" id="pause-overlay" style="display:none">
@@ -263,6 +284,8 @@ let mode="aomori";
 let gameType="typing";
 let list=[],current=null,typed="",score=0,correct=0,miss=0,timeLeft=60,timer=null,playing=false,paused=false;
 let hintOn=false;
+let waiting=false;           // スペースキー待ち（タイマー停止中）
+const isTouch=window.matchMedia&&matchMedia("(pointer:coarse)").matches;
 let mapData=null;
 let round=1;                 // 現在の周回
 const doneRound=new Map();   // 地名id -> 最後に正解した周回
@@ -290,13 +313,16 @@ function selectGameType(t){
   gameType=t;
   el("typing-btn").classList.toggle("selected",t==="typing");
   el("quiz-btn").classList.toggle("selected",t==="quiz");
+  el("kb-btn").classList.toggle("selected",t==="keyboard");
 }
 function goToSettings(){
   hideAllOverlays();
   const area=mode==="aomori"?"🍎 青森県40市町村":"🗾 47都道府県";
-  el("start-title").textContent=area+(gameType==="quiz"?"・地図クイズ":"・タイピング");
+  el("start-title").textContent=area+({quiz:"・地図クイズ",keyboard:"・キーボード練習"}[gameType]||"・タイピング");
   el("start-description").textContent=gameType==="quiz"
     ?"赤い丸の場所を考えて、ローマ字で入力しよう！ヒントは必要なときだけオンにできます。"
+    :gameType==="keyboard"
+    ?"光っているキーを押して、地名をローマ字で入力しよう！日本語入力のままでもOKです。"
     :"表示された地名をローマ字で入力しよう！答えた場所は地図が色づくよ。全部答えたら、次の色でもう一周！";
   el("start-overlay").style.display="flex";
   resetProgress();
@@ -307,11 +333,11 @@ function backToType(){
   el("type-overlay").style.display="flex";
 }
 function backToMode(){
-  playing=false;paused=false;clearInterval(timer);
+  playing=false;paused=false;waiting=false;clearInterval(timer);
   hideAllOverlays();
   el("mode-overlay").style.display="flex";
   el("pause-btn").style.display="none";
-  el("app").classList.remove("quiz-mode");
+  el("app").classList.remove("quiz-mode","kb-mode");
   clearPin();
   resetProgress();
   paintDone();
@@ -338,7 +364,8 @@ function startGame(){
   updateMapStatus();
 
   el("app").classList.toggle("quiz-mode",gameType==="quiz");
-  el("pause-btn").style.display="block";
+  el("app").classList.toggle("kb-mode",gameType==="keyboard");
+  el("pause-btn").style.display="none";
   el("quiz-tools").style.display=gameType==="quiz"?"flex":"none";
   el("map-status").style.display=gameType==="quiz"?"flex":"none";
   el("quiz-message").style.display=gameType==="quiz"?"block":"none";
@@ -348,14 +375,23 @@ function startGame(){
 
   hideAllOverlays();
   nextQuestion();
+  // スペースキーを押すまでタイマーは動かさない
+  waiting=true;
+  el("ready-overlay").style.display="flex";
+}
+function beginPlay(){
+  if(!playing||!waiting)return;
+  waiting=false;
+  el("ready-overlay").style.display="none";
+  el("pause-btn").style.display="block";
   startTimer();
-
-  // タップして入力欄を使えるようにする。自動でキーボードを開くのは
-  // ブラウザの仕様上、ユーザー操作が必要な場合があります。
-  setTimeout(()=>{
-    const input=gameType==="quiz"?el("quiz-input"):el("typing-input");
-    if(input)input.focus();
-  },100);
+  focusInput();
+}
+// スマホは入力欄にフォーカス。PCはフォーカスを外し、キー入力を直接受け取る（IMEがオンでも反応する）
+function focusInput(){
+  const input=gameType==="quiz"?el("quiz-input"):el("typing-input");
+  if(isTouch&&gameType!=="keyboard"){if(input)input.focus();}
+  else if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();
 }
 function restartGame(){
   hideAllOverlays();
@@ -379,8 +415,7 @@ function pauseGame(){
 function resumeGame(){
   paused=false;
   el("pause-overlay").style.display="none";
-  const input=gameType==="quiz"?el("quiz-input"):el("typing-input");
-  if(input)input.focus();
+  focusInput();
 }
 function showExitConfirm(){
   el("pause-overlay").style.display="none";
@@ -395,7 +430,7 @@ function exitGame(){
   hideAllOverlays();
   el("mode-overlay").style.display="flex";
   el("pause-btn").style.display="none";
-  el("app").classList.remove("quiz-mode");
+  el("app").classList.remove("quiz-mode","kb-mode");
   clearPin();
   resetProgress();
   paintDone();
@@ -409,7 +444,7 @@ function endGame(){
   el("result-overlay").style.display="flex";
 }
 function hideAllOverlays(){
-  ["mode-overlay","type-overlay","start-overlay","pause-overlay","confirm-overlay","result-overlay"].forEach(id=>el(id).style.display="none");
+  ["mode-overlay","type-overlay","start-overlay","ready-overlay","pause-overlay","confirm-overlay","result-overlay"].forEach(id=>el(id).style.display="none");
 }
 function updateMapStatus(){
   el("map-score").textContent=score;
@@ -434,7 +469,7 @@ function nextQuestion(){
   el("typing-input").classList.remove("mistyped");
   el("quiz-input").classList.remove("mistyped");
 
-  if(gameType==="typing"){
+  if(gameType!=="quiz"){
     el("kanji").textContent=current.k;
     el("kana").textContent=current.y;
     el("roma").style.display="block";
@@ -455,6 +490,19 @@ function renderRoma(){
   const typedHtml=typed.split("").map(c=>`<span class="typed">${escapeHtml(c)}</span>`).join("");
   const rest=target.slice(typed.length);
   el("roma").innerHTML=typedHtml+`<span class="untyped">${escapeHtml(rest)}</span>`;
+  updateKb();
+}
+/* ---- 画面キーボード（キーボード練習） ---- */
+const KB_ROWS=[["1","2","3","4","5","6","7","8","9","0","-","^","¥"],["q","w","e","r","t","y","u","i","o","p","@","["],["a","s","d","f","g","h","j","k","l",";",":","]"],["z","x","c","v","b","n","m",",",".","/","\\"]];
+function buildKeyboard(){
+  el("kb").innerHTML=KB_ROWS.map(r=>`<div class="kb-row">${r.map(k=>`<div class="key" data-k="${escapeHtml(k)}">${escapeHtml(k.toUpperCase())}</div>`).join("")}</div>`).join("");
+}
+function keyEl(ch){return document.querySelector(`#kb .key[data-k="${ch}"]`)}
+function updateKb(){
+  if(gameType!=="keyboard"||!current)return;
+  document.querySelectorAll("#kb .key.on").forEach(k=>k.classList.remove("on"));
+  const k=keyEl(pickSpelling(current.r,typed).charAt(typed.length));
+  if(k)k.classList.add("on");
 }
 function updateHint(){
   if(!current)return;
@@ -470,53 +518,76 @@ function toggleHint(){
   el("hint-btn").textContent=hintOn?"💡 ヒントオフ":"💡 ヒントオン";
   el("quiz-hint").classList.toggle("visible",hintOn);
   updateHint();
-  const input=el("quiz-input");
-  if(input)input.focus();
+  focusInput();
 }
 function escapeHtml(s){
   return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 }
 
-function handleAnswerInput(which){
-  if(!playing||paused||!current)return;
+/* 1文字入力の処理。戻り値: 0=ミス/無効, 1=正しい文字, 2=その地名を打ち終えた */
+function processChar(ch){
+  if(!playing||paused||waiting||!current)return 0;
+  const candidates=acceptedSpellings(current.r);
+  const inputs=[el("typing-input"),el("quiz-input")];
+  if(candidates.some(s=>s.startsWith(typed+ch))){
+    typed+=ch;
+    if(candidates.some(s=>s===typed)){
+      score+=10;
+      correct++;
+      el("score").textContent=score;
+      el("correct").textContent=correct;
+      updateMapStatus();
+      // 正解した地名を、今の周回の色で塗る
+      doneRound.set(current.id,round);
+      nextQuestion();
+      return 2;
+    }
+    inputs.forEach(i=>i.value=typed);
+    if(gameType!=="quiz")renderRoma();
+    return 1;
+  }
+  miss++;
+  el("miss").textContent=miss;
+  updateMapStatus();
+  inputs.forEach(i=>{i.value=typed;i.classList.add("mistyped");setTimeout(()=>i.classList.remove("mistyped"),250)});
+  const bad=keyEl(ch);
+  if(bad){bad.classList.add("bad");setTimeout(()=>bad.classList.remove("bad"),200)}
+  return 0;
+}
+/* スマホのソフトキーボード用（keydownでキーが取れない場合の入力欄経由） */
+function handleAnswerInput(which,e){
+  if(e&&e.isComposing)return;
+  if(!playing||paused||waiting||!current)return;
   const input=which==="quiz"?el("quiz-input"):el("typing-input");
   const raw=input.value.toLowerCase().replace(/[^a-z-]/g,"");
-  const candidates=acceptedSpellings(current.r);
-  const last=raw.slice(-1);
-
-  // 入力欄へ貼り付けた場合や複数文字の入力にも対応
-  let candidateTyped=typed;
   for(const ch of raw.slice(typed.length)){
-    if(candidates.some(s=>s.startsWith(candidateTyped+ch))){
-      candidateTyped+=ch;
-      typed=candidateTyped;
-      if(candidates.some(s=>s===typed)){
-        score+=10;
-        correct++;
-        el("score").textContent=score;
-        el("correct").textContent=correct;
-        updateMapStatus();
-        // 正解した地名を、今の周回の色で塗る
-        doneRound.set(current.id,round);
-        nextQuestion();
-        return;
-      }
-    }else{
-      miss++;
-      el("miss").textContent=miss;
-      updateMapStatus();
-      input.classList.add("mistyped");
-      input.value=typed;
-      setTimeout(()=>input.classList.remove("mistyped"),250);
-      return;
-    }
+    if(processChar(ch)!==1)return;
   }
-
   input.value=typed;
-  if(gameType==="typing")renderRoma();
 }
-el("typing-input").addEventListener("input",()=>handleAnswerInput("typing"));
-el("quiz-input").addEventListener("input",()=>handleAnswerInput("quiz"));
+el("typing-input").addEventListener("input",e=>handleAnswerInput("typing",e));
+el("quiz-input").addEventListener("input",e=>handleAnswerInput("quiz",e));
+["typing-input","quiz-input"].forEach(id=>el(id).addEventListener("compositionend",e=>{e.target.value=typed}));
+
+/* 物理キー(event.code)で判定するので、日本語入力(IME)がオンでも反応する */
+function codeToChar(code){
+  if(/^Key[A-Z]$/.test(code))return code.slice(3).toLowerCase();
+  if(code==="Minus")return "-";
+  return null;
+}
+document.addEventListener("keydown",e=>{
+  if(!playing)return;
+  if(waiting){
+    if(e.code==="Space"||e.key===" "){e.preventDefault();beginPlay();}
+    return;
+  }
+  if(paused||e.ctrlKey||e.metaKey||e.altKey)return;
+  const ch=codeToChar(e.code);
+  if(!ch)return;
+  e.preventDefault();
+  if(!e.repeat)processChar(ch);
+});
+buildKeyboard();
 
 /* ---- 地図描画 ---- */
 function polygonsOf(f){
