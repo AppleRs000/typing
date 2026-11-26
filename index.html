@@ -183,8 +183,8 @@ button{cursor:pointer}
 
 <div class="overlay" id="ready-overlay" style="display:none">
   <h1>準備はいい？</h1>
-  <p><b style="color:#facc15">スペースキー</b>を押すとスタート！<br>（押すまでタイマーは動きません）</p>
-  <div class="btns"><button class="action gray" onclick="backToMode()">やめる</button><button class="action green" onclick="beginPlay()">タップしてスタート</button></div>
+  <p><b style="color:#facc15">スペースキー</b>を押して開始します。<br><b style="color:#f87171">日本語入力モードはオフにしてください。</b><br>（押すまでタイマーは動きません）</p>
+  <div class="btns"><button class="action gray" onclick="backToMode()">やめる</button><button class="action green" id="tap-start" onclick="beginPlay(true)" style="display:none">タップしてスタート</button></div>
 </div>
 
 <div class="overlay" id="pause-overlay" style="display:none">
@@ -284,7 +284,7 @@ let mode="aomori";
 let gameType="typing";
 let list=[],current=null,typed="",score=0,correct=0,miss=0,timeLeft=60,timer=null,playing=false,paused=false;
 let hintOn=false;
-let waiting=false;           // スペースキー待ち（タイマー停止中）
+let waiting=false,readyAt=0;           // スペースキー待ち（タイマー停止中）
 const isTouch=window.matchMedia&&matchMedia("(pointer:coarse)").matches;
 let mapData=null;
 let round=1;                 // 現在の周回
@@ -377,10 +377,14 @@ function startGame(){
   nextQuestion();
   // スペースキーを押すまでタイマーは動かさない
   waiting=true;
+  readyAt=Date.now();
+  // タップ用ボタンはスマホ・タブレットだけ表示（PCでは、スタートボタンの二重クリックで始まるのを防ぐ）
+  el("tap-start").style.display=isTouch?"inline-block":"none";
   el("ready-overlay").style.display="flex";
 }
-function beginPlay(){
+function beginPlay(fromClick){
   if(!playing||!waiting)return;
+  if(fromClick&&Date.now()-readyAt<800)return; // 直前のクリックの連打で始まらないようにする
   waiting=false;
   el("ready-overlay").style.display="none";
   el("pause-btn").style.display="block";
@@ -578,7 +582,7 @@ function codeToChar(code){
 document.addEventListener("keydown",e=>{
   if(!playing)return;
   if(waiting){
-    if(e.code==="Space"||e.key===" "){e.preventDefault();beginPlay();}
+    if(e.code==="Space"||e.key===" "){e.preventDefault();if(!e.repeat)beginPlay();}
     return;
   }
   if(paused||e.ctrlKey||e.metaKey||e.altKey)return;
